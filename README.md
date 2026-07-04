@@ -3,6 +3,10 @@
 Módulo profesional de scraping con **axios** + **cheerio**. Anti-bloqueo integrado para cualquier sitio web.
 
 ```
+npm install got-scraft
+```
+
+```
 npm install https://github.com/natsu-dev01/got-scraft.git
 ```
 
