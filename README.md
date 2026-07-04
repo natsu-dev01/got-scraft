@@ -5,9 +5,7 @@ Módulo de scraping con **axios** + **cheerio**.
 ## Instalación
 
 ```bash
-git clone https://github.com/natsu-dev01/got-scraft.git
-cd got-scraft
-npm install
+npm install https://github.com/natsu-dev01/got-scraft.git
 ```
 
 ## API
