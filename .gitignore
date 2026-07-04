@@ -3,3 +3,4 @@ node_modules/
 *.log
 output-*.json
 types/
+index.js
