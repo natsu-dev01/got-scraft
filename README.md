@@ -33,27 +33,6 @@ const got = require('got-scraft');
 | Anti-bloqueo | ProxyRotator, Throttler, cacheBust, isBlocked |
 | Headers | 12 perfiles de dispositivo, headers rotativos |
 
-## Estructura
-
-```
-got-scraft/
-├── src/
-│   ├── index.js      ← Entry point (CJS)
-│   ├── index.mjs     ← Entry point (ESM)
-│   ├── client.js     ← Cliente HTTP y sesiones
-│   ├── http.js       ← fetch, fetchWithRetry, post
-│   ├── headers.js    ← Headers camuflados y perfiles
-│   ├── parser.js     ← Cheerio, meta tags, texto
-│   ├── extract.js    ← Extractores de datos
-│   ├── anti.js       ← ProxyRotator, Throttler, cacheBust
-│   ├── cookies.js    ← Manejo de cookies
-│   └── utils.js      ← Utilidades generales
-├── types/
-│   └── index.d.ts    ← TypeScript definitions
-├── package.json
-└── README.md
-```
-
 ## Anti-bloqueo
 
 ### Proxy rotatorio
