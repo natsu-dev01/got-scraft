@@ -14,6 +14,10 @@ export const {
   rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay,
   saveJSON, loadJSON, log, parseNumber,
   scrapeMeta,
+  scrapeFacebook,
+  buildFbHeaders, toMobileUrl, toGraphApiUrl,
+  parseMbasicContent, extractFacebookVideo,
+  extractFacebookPostId, extractPageName,
 } = mod;
 
 export default mod;
