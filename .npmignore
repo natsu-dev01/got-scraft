@@ -2,3 +2,4 @@
 SECURITY.md
 tsconfig.json
 examples/
+src/*.ts

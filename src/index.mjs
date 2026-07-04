@@ -1,9 +1,10 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const mod = require('./index.js');
+const mod = require('../dist/index.js');
 
 export const {
+  version,
   fetch, fetchWithRetry, post, createClient, createSession,
   load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML,
   extractLinks, extractImages, extractScripts, extractStyles,
