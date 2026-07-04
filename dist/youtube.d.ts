@@ -37,8 +37,31 @@ export interface YouTubeOptions {
     preferVideoItag?: number;
     ytDlpPath?: string;
 }
+export interface YtDlpFormat {
+    format_id: string;
+    format_note?: string;
+    ext: string;
+    url?: string;
+    acodec?: string;
+    vcodec?: string;
+    tbr?: number;
+    abr?: number;
+    asr?: number;
+    filesize?: number;
+    filesize_approx?: number;
+    width?: number;
+    height?: number;
+    fps?: number;
+    audio_channels?: number;
+    container?: string;
+    protocol?: string;
+}
 declare function extractYouTubeId(url: string): string | null;
 export declare function getVideoInfo(url: string, opts?: YouTubeOptions): Promise<YouTubeVideoInfo>;
+export declare function getDirectUrl(url: string, formatSelector: string, opts?: YouTubeOptions): Promise<{
+    url: string;
+    itag: number;
+}>;
 export declare function getAudioUrl(url: string, opts?: YouTubeOptions): Promise<{
     url: string;
     itag: number;

@@ -1,4 +1,8 @@
 import { createClient } from './client';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import * as https from 'node:https';
 
 const YT_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -64,6 +68,26 @@ export interface YouTubeOptions {
   preferAudioItag?: number;
   preferVideoItag?: number;
   ytDlpPath?: string;
+}
+
+export interface YtDlpFormat {
+  format_id: string;
+  format_note?: string;
+  ext: string;
+  url?: string;
+  acodec?: string;
+  vcodec?: string;
+  tbr?: number;
+  abr?: number;
+  asr?: number;
+  filesize?: number;
+  filesize_approx?: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  audio_channels?: number;
+  container?: string;
+  protocol?: string;
 }
 
 function extractYouTubeId(url: string): string | null {
@@ -147,6 +171,151 @@ function extractThumbnail(data: Record<string, unknown>): string {
   }
 }
 
+function getYtDlpCacheDir(): string {
+  const base = process.platform === 'win32'
+    ? (process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'))
+    : path.join(os.homedir(), '.cache');
+  const dir = path.join(base, 'got-scraft', 'yt-dlp');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+function getYtDlpBinaryName(): string {
+  if (process.platform === 'win32') return 'yt-dlp.exe';
+  if (process.platform === 'darwin') return 'yt-dlp_macos';
+  return 'yt-dlp';
+}
+
+function getYtDlpDownloadUrl(): string {
+  return `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${getYtDlpBinaryName()}`;
+}
+
+function execYtDlp(binary: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    import('node:child_process').then(({ execFile }) => {
+      execFile(binary, args, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+        if (error) {
+          const msg = stderr ? stderr.toString().split('\n').slice(0, 5).join('; ') : error.message;
+          reject(new Error(`yt-dlp: ${msg}`));
+        } else {
+          resolve(stdout.toString());
+        }
+      });
+    });
+  });
+}
+
+function downloadFile(url: string, destPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(destPath);
+    https.get(url, (res) => {
+      if (res.statusCode === 302 || res.statusCode === 301) {
+        file.close();
+        fs.unlinkSync(destPath);
+        downloadFile(res.headers.location!, destPath).then(resolve).catch(reject);
+        return;
+      }
+      if (res.statusCode !== 200) {
+        file.close();
+        fs.unlinkSync(destPath);
+        reject(new Error(`Download failed with status ${res.statusCode}`));
+        return;
+      }
+      const total = parseInt(res.headers['content-length'] || '0', 10);
+      let downloaded = 0;
+      res.on('data', (chunk: Buffer) => {
+        downloaded += chunk.length;
+        if (total > 0) {
+          const pct = ((downloaded / total) * 100).toFixed(1);
+          process.stderr.write(`\ryt-dlp: descargando ${pct}% (${(downloaded / 1024 / 1024).toFixed(1)}MB / ${(total / 1024 / 1024).toFixed(1)}MB)`);
+        }
+      });
+      res.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        if (total > 0) process.stderr.write('\n');
+        resolve();
+      });
+      file.on('error', (err) => {
+        file.close();
+        fs.unlinkSync(destPath);
+        reject(err);
+      });
+    }).on('error', (err) => {
+      file.close();
+      if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
+      reject(err);
+    });
+  });
+}
+
+async function downloadYtDlp(cacheDir: string): Promise<string> {
+  const binaryName = getYtDlpBinaryName();
+  const destPath = path.join(cacheDir, binaryName);
+  const url = getYtDlpDownloadUrl();
+
+  process.stderr.write(`yt-dlp: descargando ${binaryName} desde GitHub...\n`);
+  await downloadFile(url, destPath);
+
+  if (process.platform !== 'win32') {
+    fs.chmodSync(destPath, 0o755);
+  }
+
+  const version = await execYtDlp(destPath, ['--version']).then(v => v.trim());
+  process.stderr.write(`yt-dlp: descargado v${version} en ${destPath}\n`);
+  return destPath;
+}
+
+async function findOrDownloadYtDlp(customPath?: string): Promise<string> {
+  if (customPath) return customPath;
+
+  const cacheDir = getYtDlpCacheDir();
+  const cachedBinary = path.join(cacheDir, getYtDlpBinaryName());
+
+  if (fs.existsSync(cachedBinary)) {
+    try {
+      await execYtDlp(cachedBinary, ['--version']);
+      return cachedBinary;
+    } catch {
+      fs.unlinkSync(cachedBinary);
+    }
+  }
+
+  try {
+    await execYtDlp(getYtDlpBinaryName(), ['--version']);
+    return getYtDlpBinaryName();
+  } catch {
+    return downloadYtDlp(cacheDir);
+  }
+}
+
+function ytDlpToYouTubeFormat(f: Record<string, unknown>): YouTubeFormat {
+  const itag = parseInt(f.format_id as string, 10) || 0;
+  const ext = f.ext as string || '';
+  const vcodec = f.vcodec as string || '';
+  const acodec = f.acodec as string || '';
+  const mimeType = ext === 'mp4' ? `video/mp4; codecs="${vcodec || acodec || 'avc1'}"`
+    : ext === 'webm' ? `video/webm; codecs="${vcodec || acodec || 'vp9'}"`
+    : `${ext}/unknown`;
+  const isAudio = vcodec === 'none' && acodec !== 'none';
+  const isVideo = acodec === 'none' && vcodec !== 'none';
+  const height = f.height as number || 0;
+  const abr = f.abr as number || 0;
+
+  return {
+    itag,
+    url: (f.url as string) || null,
+    mimeType,
+    container: (f.container as string) || ext || 'unknown',
+    quality: isVideo ? `${height}p` : (f.format_note as string || undefined),
+    bitrate: isAudio && abr ? `${abr.toFixed(0)}kbps` : undefined,
+    contentLength: f.filesize ? String(f.filesize) : (f.filesize_approx ? String(f.filesize_approx) : undefined),
+    audioChannels: f.audio_channels as number || undefined,
+  };
+}
+
 export async function getVideoInfo(url: string, opts: YouTubeOptions = {}): Promise<YouTubeVideoInfo> {
   const videoId = extractYouTubeId(url);
   if (!videoId) throw new Error(`Invalid YouTube URL: ${url}`);
@@ -171,8 +340,9 @@ export async function getVideoInfo(url: string, opts: YouTubeOptions = {}): Prom
 
   const details = (playerData.videoDetails || {}) as Record<string, unknown>;
   const formats = parseFormats(playerData);
+  const hasAnyUrl = formats.some(f => f.url);
 
-  return {
+  const result: YouTubeVideoInfo = {
     id: videoId,
     title: (details.title as string) || '',
     author: (details.author as string) || (details.ownerChannelName as string) || '',
@@ -184,6 +354,41 @@ export async function getVideoInfo(url: string, opts: YouTubeOptions = {}): Prom
     videoFormats: formats.filter(f => f.mimeType.startsWith('video/')),
     dashUrl: ((playerData.streamingData as Record<string, unknown>)?.dashManifestUrl as string) || null,
   };
+
+  if (hasAnyUrl) return result;
+
+  const ytDlpPath = await findOrDownloadYtDlp(opts.ytDlpPath);
+  const json = await execYtDlp(ytDlpPath, ['--dump-json', url]);
+  const ytDlpData: Record<string, unknown> = JSON.parse(json);
+  const ytFormats = (ytDlpData.formats || []) as Record<string, unknown>[];
+  const fullFormats = ytFormats.map(ytDlpToYouTubeFormat);
+
+  return {
+    id: videoId,
+    title: (ytDlpData.title as string) || result.title,
+    author: (ytDlpData.channel as string) || result.author,
+    lengthSeconds: (ytDlpData.duration as number) || result.lengthSeconds,
+    description: (ytDlpData.description as string) || result.description,
+    thumbnail: (ytDlpData.thumbnail as string) || result.thumbnail,
+    formats: fullFormats,
+    audioFormats: fullFormats.filter(f => f.mimeType.startsWith('audio/')),
+    videoFormats: fullFormats.filter(f => f.mimeType.startsWith('video/')),
+    dashUrl: null,
+  };
+}
+
+export async function getDirectUrl(
+  url: string,
+  formatSelector: string,
+  opts: YouTubeOptions = {}
+): Promise<{ url: string; itag: number }> {
+  const ytDlpPath = await findOrDownloadYtDlp(opts.ytDlpPath);
+  const stdout = await execYtDlp(ytDlpPath, ['-g', '-f', formatSelector, url]);
+  const lines = stdout.trim().split('\n');
+  const parsedUrl = lines.find(l => l.startsWith('http'));
+  if (!parsedUrl) throw new Error(`yt-dlp no devolvió una URL para el formato ${formatSelector}`);
+  const itag = parseInt(formatSelector, 10) || 0;
+  return { url: parsedUrl, itag };
 }
 
 export async function getAudioUrl(url: string, opts: YouTubeOptions = {}): Promise<{ url: string; itag: number }> {
@@ -202,15 +407,9 @@ export async function getAudioUrl(url: string, opts: YouTubeOptions = {}): Promi
 
   if (!audio) throw new Error('No hay formatos de audio disponibles');
 
-  if (!audio.url) {
-    throw new Error(
-      `YouTube cifró las URLs de streaming. Usa yt-dlp como backend:\n` +
-      `  npm install -g yt-dlp\n` +
-      `  yt-dlp -f ${audio.itag}+bestaudio --extract-audio --audio-format mp3 "${url}"`
-    );
-  }
+  if (audio.url) return { url: audio.url, itag: audio.itag };
 
-  return { url: audio.url, itag: audio.itag };
+  return getDirectUrl(url, String(audio.itag), opts);
 }
 
 export async function getVideoUrl(url: string, opts: YouTubeOptions = {}): Promise<{ url: string; itag: number }> {
@@ -226,34 +425,34 @@ export async function getVideoUrl(url: string, opts: YouTubeOptions = {}): Promi
 
   if (!video) throw new Error('No hay formatos de video disponibles');
 
-  if (!video.url) {
-    throw new Error(
-      `YouTube cifró las URLs de streaming. Usa yt-dlp:\n` +
-      `  yt-dlp -f ${video.itag} "${url}"`
-    );
-  }
+  if (video.url) return { url: video.url, itag: video.itag };
 
-  return { url: video.url, itag: video.itag };
+  return getDirectUrl(url, String(video.itag), opts);
 }
 
-export async function download(url: string, destPath: string, opts: YouTubeOptions = {}): Promise<void> {
+export async function download(
+  url: string,
+  destPath: string,
+  opts: YouTubeOptions = {}
+): Promise<void> {
+  const ytDlpPath = await findOrDownloadYtDlp(opts.ytDlpPath);
   const info = await getVideoInfo(url, opts);
   const hasDirectUrl = info.audioFormats.some(f => f.url);
 
   if (hasDirectUrl) {
     const { url: audioUrl } = await getAudioUrl(url, opts);
-    const fs = await import('node:fs');
-    const https = await import('node:https');
-    const http = await import('node:http');
+    const fs2 = await import('node:fs');
+    const https2 = await import('node:https');
+    const http2 = await import('node:http');
 
     return new Promise((resolve, reject) => {
-      const protocol = audioUrl.startsWith('https') ? https : http;
+      const protocol = audioUrl.startsWith('https') ? https2 : http2;
       protocol.get(audioUrl, (res) => {
         if (res.statusCode !== 200) {
           reject(new Error(`Download failed: ${res.statusCode}`));
           return;
         }
-        const file = fs.createWriteStream(destPath);
+        const file = fs2.createWriteStream(destPath);
         res.pipe(file);
         file.on('finish', () => { file.close(); resolve(); });
         file.on('error', reject);
@@ -261,22 +460,22 @@ export async function download(url: string, destPath: string, opts: YouTubeOptio
     });
   }
 
-  const ytDlpPath = opts.ytDlpPath || 'yt-dlp';
-  const { execFile } = await import('node:child_process');
-
   return new Promise((resolve, reject) => {
-    const args = [
-      '-f', 'bestaudio',
-      '--extract-audio',
-      '--audio-format', 'mp3',
-      '-o', destPath,
-      url,
-    ];
-    const proc = execFile(ytDlpPath, args, (error) => {
-      if (error) reject(new Error(`yt-dlp failed: ${error.message}`));
-      else resolve();
+    import('node:child_process').then(({ spawn }) => {
+      const args = [
+        '-f', 'bestaudio',
+        '--extract-audio',
+        '--audio-format', 'mp3',
+        '-o', destPath,
+        url,
+      ];
+      const proc = spawn(ytDlpPath, args, { stdio: ['ignore', 'inherit', 'inherit'] });
+      proc.on('exit', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`yt-dlp exited with code ${code}`));
+      });
+      proc.on('error', reject);
     });
-    proc.stderr?.pipe(process.stderr);
   });
 }
 

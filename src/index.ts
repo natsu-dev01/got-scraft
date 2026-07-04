@@ -40,7 +40,7 @@ import {
 } from './facebook';
 import type { FbContent } from './facebook';
 import {
-  getVideoInfo, getAudioUrl, getVideoUrl, download,
+  getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download,
   extractYouTubeId,
 } from './youtube';
 import type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions } from './youtube';
@@ -222,7 +222,7 @@ export {
   extractFacebookPostId, extractPageName,
 
   // YouTube
-  getVideoInfo, getAudioUrl, getVideoUrl, download,
+  getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download,
   extractYouTubeId,
 };
 

@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.log = exports.loadJSON = exports.saveJSON = exports.randomDelay = exports.sleep = exports.shuffleObjectKeys = exports.shuffle = exports.pick = exports.rand = exports.mergeCookies = exports.cookiesToHeader = exports.cookiesFromBrowser = exports.cookiesFromNetscape = exports.cookiesFromFile = exports.LANGUAGES = exports.REFERERS = exports.AGENTS = exports.PROFILES = exports.buildSecChUa = exports.buildHeaders = exports.inspectResponse = exports.isBlocked = exports.cacheBust = exports.Throttler = exports.ProxyRotator = exports.extractJsonLd = exports.extractForms = exports.extractIFrames = exports.extractEmails = exports.extractStyles = exports.extractScripts = exports.extractImages = exports.extractLinks = exports.parseNumber = exports.stripHTML = exports.matchText = exports.getLines = exports.getText = exports.getOG = exports.getAllMeta = exports.getMeta = exports.load = exports.createSession = exports.createClient = exports.post = exports.fetchWithRetry = exports.fetch = exports.integrityMap = exports.packageInfo = exports.version = void 0;
-exports.extractYouTubeId = exports.download = exports.getVideoUrl = exports.getAudioUrl = exports.getVideoInfo = exports.extractPageName = exports.extractFacebookPostId = exports.extractFacebookVideo = exports.parseMbasicContent = exports.toGraphApiUrl = exports.toMobileUrl = exports.buildFbHeaders = void 0;
+exports.extractYouTubeId = exports.download = exports.getDirectUrl = exports.getVideoUrl = exports.getAudioUrl = exports.getVideoInfo = exports.extractPageName = exports.extractFacebookPostId = exports.extractFacebookVideo = exports.parseMbasicContent = exports.toGraphApiUrl = exports.toMobileUrl = exports.buildFbHeaders = void 0;
 exports.scrapeMeta = scrapeMeta;
 exports.scrapeFacebook = scrapeFacebook;
 exports.verify = verify;
@@ -78,6 +78,7 @@ const youtube_1 = require("./youtube");
 Object.defineProperty(exports, "getVideoInfo", { enumerable: true, get: function () { return youtube_1.getVideoInfo; } });
 Object.defineProperty(exports, "getAudioUrl", { enumerable: true, get: function () { return youtube_1.getAudioUrl; } });
 Object.defineProperty(exports, "getVideoUrl", { enumerable: true, get: function () { return youtube_1.getVideoUrl; } });
+Object.defineProperty(exports, "getDirectUrl", { enumerable: true, get: function () { return youtube_1.getDirectUrl; } });
 Object.defineProperty(exports, "download", { enumerable: true, get: function () { return youtube_1.download; } });
 Object.defineProperty(exports, "extractYouTubeId", { enumerable: true, get: function () { return youtube_1.extractYouTubeId; } });
 const INTEGRITY = {
