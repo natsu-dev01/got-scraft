@@ -19,6 +19,8 @@ export const {
   buildFbHeaders, toMobileUrl, toGraphApiUrl,
   parseMbasicContent, extractFacebookVideo,
   extractFacebookPostId, extractPageName,
+  getVideoInfo, getAudioUrl, getVideoUrl, download,
+  extractYouTubeId,
 } = mod;
 
 export default mod;

@@ -16,6 +16,8 @@ import { cookiesFromFile, cookiesFromNetscape, cookiesFromBrowser, cookiesToHead
 import { rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay, saveJSON, loadJSON, log } from './utils';
 import { buildFbHeaders, toMobileUrl, toGraphApiUrl, parseMbasicContent, extractFacebookVideo, extractFacebookPostId, extractPageName } from './facebook';
 import type { FbContent } from './facebook';
+import { getVideoInfo, getAudioUrl, getVideoUrl, download, extractYouTubeId } from './youtube';
+import type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions } from './youtube';
 declare const INTEGRITY: Record<string, string>;
 export interface MetaResult {
     url: string;
@@ -42,6 +44,7 @@ export interface VerifyResult {
 }
 export declare function verify(): VerifyResult;
 export declare const version: string;
-export { pkg as packageInfo, INTEGRITY as integrityMap, fetch, fetchWithRetry, post, createClient, createSession, load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML, parseNumber, extractLinks, extractImages, extractScripts, extractStyles, extractEmails, extractIFrames, extractForms, extractJsonLd, ProxyRotator, Throttler, cacheBust, isBlocked, inspectResponse, buildHeaders, buildSecChUa, PROFILES, AGENTS, REFERERS, LANGUAGES, cookiesFromFile, cookiesFromNetscape, cookiesFromBrowser, cookiesToHeader, mergeCookies, rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay, saveJSON, loadJSON, log, buildFbHeaders, toMobileUrl, toGraphApiUrl, parseMbasicContent, extractFacebookVideo, extractFacebookPostId, extractPageName, };
+export { pkg as packageInfo, INTEGRITY as integrityMap, fetch, fetchWithRetry, post, createClient, createSession, load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML, parseNumber, extractLinks, extractImages, extractScripts, extractStyles, extractEmails, extractIFrames, extractForms, extractJsonLd, ProxyRotator, Throttler, cacheBust, isBlocked, inspectResponse, buildHeaders, buildSecChUa, PROFILES, AGENTS, REFERERS, LANGUAGES, cookiesFromFile, cookiesFromNetscape, cookiesFromBrowser, cookiesToHeader, mergeCookies, rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay, saveJSON, loadJSON, log, buildFbHeaders, toMobileUrl, toGraphApiUrl, parseMbasicContent, extractFacebookVideo, extractFacebookPostId, extractPageName, getVideoInfo, getAudioUrl, getVideoUrl, download, extractYouTubeId, };
+export type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions, };
 export type { AxiosInstance, AxiosRequestConfig, FetchOptions, RetryOptions, ClientOptions, Session, LoadOptions, MatchResult, FormData, BuildHeadersOptions, DeviceProfile, InspectResult, FbContent, };
 //# sourceMappingURL=index.d.ts.map

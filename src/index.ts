@@ -39,6 +39,11 @@ import {
   extractFacebookPostId, extractPageName,
 } from './facebook';
 import type { FbContent } from './facebook';
+import {
+  getVideoInfo, getAudioUrl, getVideoUrl, download,
+  extractYouTubeId,
+} from './youtube';
+import type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions } from './youtube';
 
 const INTEGRITY: Record<string, string> = {
   '2.0.0': '515c8e83f6020ea5e23abe7e9bcdef0bd3565cd81d43f6d48cce7d1dc48ff79a',
@@ -215,6 +220,16 @@ export {
   buildFbHeaders, toMobileUrl, toGraphApiUrl,
   parseMbasicContent, extractFacebookVideo,
   extractFacebookPostId, extractPageName,
+
+  // YouTube
+  getVideoInfo, getAudioUrl, getVideoUrl, download,
+  extractYouTubeId,
+};
+
+export type {
+  YouTubeVideoInfo,
+  YouTubeFormat,
+  YouTubeOptions,
 };
 
 // Type exports for consumers

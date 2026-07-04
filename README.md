@@ -249,11 +249,6 @@ async function scrapeVideo() {
 scrapeVideo().catch(console.error);
 ```
 
-```bash
-node scraper.js
-node scraper.js "https://www.facebook.com/someuser/videos/123456789/"
-```
-
 ## Dependencias
 
 | Paquete | Versión | Uso |
