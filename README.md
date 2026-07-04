@@ -31,7 +31,6 @@ got-scraft/
 │   └── utils.js      ← Utilidades generales
 ├── types/
 │   └── index.d.ts    ← TypeScript definitions
-├── examples/          ← Ejemplos de uso
 ├── package.json
 └── README.md
 ```
@@ -201,27 +200,6 @@ const got = require('got-scraft');
 
 const info = await got.scrapeMeta('https://ejemplo.com');
 // { url, title, meta: {...}, og: {...} }
-```
-
-## TypeScript
-
-El módulo incluye definiciones de tipos TypeScript (`types/index.d.ts`):
-
-```typescript
-import got, { ProxyRotator, Throttler, ClientOptions } from 'got-scraft';
-
-const html: string = await got.fetch('https://ejemplo.com');
-const rotator = new ProxyRotator(['127.0.0.1:8080']);
-```
-
-## Ejemplos
-
-```bash
-# Ejemplo básico
-node examples/basic.js
-
-# Ejemplo avanzado con anti-bloqueo
-node examples/advanced.js
 ```
 
 ## Dependencias
