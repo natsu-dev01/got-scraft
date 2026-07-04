@@ -14,7 +14,13 @@
 
 'use strict';
 
+const crypto = require('node:crypto');
 const pkg = require('../package.json');
+
+/** Hashes SHA256 de cada versión para verificar integridad. */
+const INTEGRITY = {
+  '2.0.0': '515c8e83f6020ea5e23abe7e9bcdef0bd3565cd81d43f6d48cce7d1dc48ff79a',
+};
 
 const { fetch, fetchWithRetry, post } = require('./http');
 const { createClient, createSession } = require('./client');
@@ -59,9 +65,31 @@ async function scrapeMeta(url, opts = {}) {
   };
 }
 
+/**
+ * Verifica la integridad del módulo comparando el hash SHA256.
+ * @returns {{ ok: boolean, version: string, hash: string, expected: string }}
+ */
+function verify() {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const expected = INTEGRITY[pkg.version];
+
+  if (!expected) {
+    return { ok: false, version: pkg.version, error: 'No integrity hash for this version' };
+  }
+
+  const mainFile = path.join(__dirname, 'index.js');
+  const content = fs.readFileSync(mainFile);
+  const hash = crypto.createHash('sha256').update(content).digest('hex');
+
+  return { ok: hash === expected, version: pkg.version, hash, expected };
+}
+
 module.exports = {
   // Información del módulo
   version: pkg.version,
+  integrity: INTEGRITY,
+  verify,
 
   // HTTP
   fetch, fetchWithRetry, post, createClient, createSession,
