@@ -204,6 +204,56 @@ const info = await got.scrapeMeta('https://ejemplo.com');
 // { url, title, meta: {...}, og: {...} }
 ```
 
+## Ejemplo: scraper de video de Facebook
+
+```js
+const got = require('got-scraft');
+
+const TARGET_URL = process.argv[2] || 'https://www.facebook.com/facebook/videos/10153231379946729/';
+
+function extractVideoUrls(html) {
+  const result = { hd: null, sd: null };
+  const hd = html.match(/browser_native_hd_url"\s*:\s*"([^"]+)"/);
+  const sd = html.match(/browser_native_sd_url"\s*:\s*"([^"]+)"/);
+  if (hd) result.hd = hd[1].replace(/\\\//g, '/');
+  if (sd) result.sd = sd[1].replace(/\\\//g, '/');
+  return result;
+}
+
+async function scrapeVideo() {
+  const session = got.createSession({
+    minGap: 3000,
+    maxRPM: 15,
+    cookieJar: false,
+  });
+
+  const html = await session.get(TARGET_URL);
+
+  const $ = got.load(html);
+  const jsonLd = got.extractJsonLd($);
+  const videoUrls = extractVideoUrls(html);
+
+  const result = {
+    url: TARGET_URL,
+    scrapedAt: new Date().toISOString(),
+    title: $('title').text(),
+    description: got.getMeta($, 'description'),
+    og: got.getOG($),
+    videoUrls,
+    jsonLd,
+  };
+
+  console.log(JSON.stringify(result, null, 2));
+}
+
+scrapeVideo().catch(console.error);
+```
+
+```bash
+node scraper.js
+node scraper.js "https://www.facebook.com/someuser/videos/123456789/"
+```
+
 ## Dependencias
 
 | Paquete | Versión | Uso |
