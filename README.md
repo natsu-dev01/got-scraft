@@ -7,12 +7,31 @@ npm install https://github.com/natsu-dev01/got-scraft.git
 ```
 
 ```js
-// CommonJS
 const got = require('got-scraft');
-
-// ES Modules
-import got from 'got-scraft';
 ```
+
+## About
+
+**got-scraft** es un módulo de scraping diseñado para extraer datos de cualquier sitio web evitando bloqueos. Todo en uno: HTTP client, parser HTML, anti-detección, y extractores de datos.
+
+### Por qué got-scraft
+
+- **Anti-bloqueo real**: proxies rotativos, rate limiting, cache busting, headers camuflados
+- **Sin navegador**: usa axios + cheerio, más rápido que Puppeteer
+- **Dual CJS/ESM**: funciona con `require()` e `import`
+- **TypeScript**: definiciones de tipos incluidas
+- **Integridad**: verificación SHA256 contra manipulation
+- **Zero config**: funciona out-of-the-box
+
+### Capacidades
+
+| Area | Que hace |
+|------|----------|
+| HTTP | fetch, fetchWithRetry, post, sesiones con cookies |
+| HTML | cheerio, meta tags, Open Graph, encoding auto |
+| Extraccion | links, imágenes, scripts, emails, forms, JSON-LD |
+| Anti-bloqueo | ProxyRotator, Throttler, cacheBust, isBlocked |
+| Headers | 12 perfiles de dispositivo, headers rotativos |
 
 ## Estructura
 
