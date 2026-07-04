@@ -1,19 +1,38 @@
 {
-  "name": "custom-scraper",
-  "version": "1.0.0",
-  "description": "Módulo de scraping con axios + cheerio",
-  "main": "index.js",
+  "name": "got-scraft",
+  "version": "2.0.0",
+  "description": "Módulo de scraping con axios + cheerio. Anti-bloqueo para cualquier web.",
+  "license": "MIT",
+  "keywords": [
+    "scraper", "axios", "cheerio", "scraping",
+    "web-scraper", "anti-blocking", "proxy-rotator"
+  ],
   "type": "commonjs",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "main": "src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.mjs",
+      "require": "./src/index.js"
+    },
+    "./*": "./*"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "test": "node examples/basic.js",
+    "types": "npx tsc"
+  },
   "dependencies": {
     "axios": "^1.18.1",
-    "axios-cookiejar-support": "^7.0.0",
+    "axios-cookiejar-support": "^5.0.2",
+    "chardet": "^2.1.0",
     "cheerio": "^1.2.0",
-    "tough-cookie": "^6.0.1"
+    "https-proxy-agent": "^7.0.6",
+    "iconv-lite": "^0.6.3",
+    "socks-proxy-agent": "^8.0.5",
+    "tough-cookie": "^5.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "typescript": "^6.0.3"
   }
 }
