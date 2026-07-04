@@ -1,0 +1,17 @@
+{
+  "name": "custom-scraper",
+  "version": "1.0.0",
+  "description": "Módulo de scraping con axios + cheerio",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.18.1",
+    "cheerio": "^1.2.0"
+  }
+}
