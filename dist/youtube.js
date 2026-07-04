@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VIDEO_ITAGS = exports.AUDIO_ITAGS = void 0;
 exports.getVideoInfo = getVideoInfo;
+exports.ensureAria2c = ensureAria2c;
 exports.getDirectUrl = getDirectUrl;
 exports.getAudioUrl = getAudioUrl;
 exports.getVideoUrl = getVideoUrl;
@@ -156,14 +157,13 @@ function extractThumbnail(data) {
         return '';
     }
 }
-function getYtDlpCacheDir() {
+function getCacheDir(sub) {
     const base = process.platform === 'win32'
         ? (process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'))
         : path.join(os.homedir(), '.cache');
-    const dir = path.join(base, 'got-scraft', 'yt-dlp');
-    if (!fs.existsSync(dir)) {
+    const dir = path.join(base, 'got-scraft', sub);
+    if (!fs.existsSync(dir))
         fs.mkdirSync(dir, { recursive: true });
-    }
     return dir;
 }
 function getYtDlpBinaryName() {
@@ -175,6 +175,23 @@ function getYtDlpBinaryName() {
 }
 function getYtDlpDownloadUrl() {
     return `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${getYtDlpBinaryName()}`;
+}
+function getAria2Url() {
+    if (process.platform === 'win32') {
+        return {
+            url: 'https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip',
+            extract: true,
+            innerFile: 'aria2c.exe',
+        };
+    }
+    if (process.platform === 'linux') {
+        return {
+            url: 'https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-linux-gnu-64bit-build1.tar.bz2',
+            extract: true,
+            innerFile: 'aria2c',
+        };
+    }
+    return { url: '', extract: false };
 }
 function execYtDlp(binary, args) {
     return new Promise((resolve, reject) => {
@@ -252,7 +269,7 @@ async function downloadYtDlp(cacheDir) {
 async function findOrDownloadYtDlp(customPath) {
     if (customPath)
         return customPath;
-    const cacheDir = getYtDlpCacheDir();
+    const cacheDir = getCacheDir('yt-dlp');
     const cachedBinary = path.join(cacheDir, getYtDlpBinaryName());
     if (fs.existsSync(cachedBinary)) {
         try {
@@ -270,6 +287,128 @@ async function findOrDownloadYtDlp(customPath) {
     catch {
         return downloadYtDlp(cacheDir);
     }
+}
+function execTool(tool, args) {
+    return new Promise((resolve, reject) => {
+        import('node:child_process').then(({ execFile }) => {
+            execFile(tool, args, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+                if (error) {
+                    const msg = stderr ? stderr.toString().split('\n').slice(0, 3).join('; ') : error.message;
+                    reject(new Error(`${tool}: ${msg}`));
+                }
+                else {
+                    resolve(stdout.toString());
+                }
+            });
+        });
+    });
+}
+async function findAria2c() {
+    const systemName = process.platform === 'win32' ? 'aria2c.exe' : 'aria2c';
+    const simpleName = 'aria2c';
+    const cached = path.join(getCacheDir('aria2'), systemName);
+    if (fs.existsSync(cached)) {
+        try {
+            await execTool(cached, ['--version']);
+            return cached;
+        }
+        catch {
+            fs.unlinkSync(cached);
+        }
+    }
+    try {
+        await execTool(systemName, ['--version']);
+        return simpleName;
+    }
+    catch {
+        return null;
+    }
+}
+async function downloadAria2() {
+    const info = getAria2Url();
+    if (!info.url)
+        return null;
+    const aria2Dir = getCacheDir('aria2');
+    const destName = process.platform === 'win32' ? 'aria2c.exe' : 'aria2c';
+    const destPath = path.join(aria2Dir, destName);
+    if (fs.existsSync(destPath)) {
+        try {
+            await execTool(destPath, ['--version']);
+            return destPath;
+        }
+        catch {
+            fs.unlinkSync(destPath);
+        }
+    }
+    process.stderr.write(`aria2: descargando desde GitHub...\n`);
+    const tmpZip = path.join(aria2Dir, 'aria2_dl');
+    await downloadFile(info.url, tmpZip);
+    if (info.extract && info.innerFile) {
+        if (process.platform === 'win32') {
+            await execTool('powershell', [
+                '-Command',
+                `Expand-Archive -Path "${tmpZip}" -DestinationPath "${aria2Dir}" -Force`
+            ]);
+            const extracted = path.join(aria2Dir, info.innerFile);
+            if (fs.existsSync(extracted)) {
+                fs.unlinkSync(tmpZip);
+                try {
+                    await execTool(destPath, ['--version']);
+                }
+                catch { /* ignore */ }
+                return extracted;
+            }
+            const subDirs = fs.readdirSync(aria2Dir).filter(d => d.startsWith('aria2-'));
+            for (const sub of subDirs) {
+                const sp = path.join(aria2Dir, sub, info.innerFile);
+                if (fs.existsSync(sp)) {
+                    fs.renameSync(sp, destPath);
+                    fs.rmSync(path.join(aria2Dir, sub), { recursive: true, force: true });
+                    fs.unlinkSync(tmpZip);
+                    try {
+                        await execTool(destPath, ['--version']);
+                    }
+                    catch { /* ignore */ }
+                    return destPath;
+                }
+            }
+        }
+        else if (process.platform === 'linux') {
+            const tarDest = path.join(aria2Dir, 'aria2_extracted');
+            if (!fs.existsSync(tarDest))
+                fs.mkdirSync(tarDest, { recursive: true });
+            await execTool('tar', ['-xjf', tmpZip, '-C', tarDest]);
+            const found = findFileRecursive(tarDest, info.innerFile);
+            if (found) {
+                fs.renameSync(found, destPath);
+                fs.chmodSync(destPath, 0o755);
+                fs.rmSync(tarDest, { recursive: true, force: true });
+                fs.unlinkSync(tmpZip);
+                try {
+                    await execTool(destPath, ['--version']);
+                }
+                catch { /* ignore */ }
+                return destPath;
+            }
+            fs.rmSync(tarDest, { recursive: true, force: true });
+        }
+        fs.unlinkSync(tmpZip);
+    }
+    return null;
+}
+function findFileRecursive(dir, target) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            const found = findFileRecursive(fullPath, target);
+            if (found)
+                return found;
+        }
+        else if (entry.name === target) {
+            return fullPath;
+        }
+    }
+    return null;
 }
 function ytDlpToYouTubeFormat(f) {
     const itag = parseInt(f.format_id, 10) || 0;
@@ -348,6 +487,13 @@ async function getVideoInfo(url, opts = {}) {
         dashUrl: null,
     };
 }
+async function ensureAria2c() {
+    const aria2Name = process.platform === 'win32' ? 'aria2c.exe' : 'aria2c';
+    const existing = await findAria2c();
+    if (existing)
+        return existing;
+    return downloadAria2();
+}
 async function getDirectUrl(url, formatSelector, opts = {}) {
     const ytDlpPath = await findOrDownloadYtDlp(opts.ytDlpPath);
     const stdout = await execYtDlp(ytDlpPath, ['-g', '-f', formatSelector, url]);
@@ -406,6 +552,7 @@ async function getVideoUrl(url, opts = {}) {
 }
 async function download(url, destPath, opts = {}) {
     const ytDlpPath = await findOrDownloadYtDlp(opts.ytDlpPath);
+    const concurrent = opts.concurrentFragments ?? 10;
     const info = await getVideoInfo(url, opts);
     const hasDirectUrl = info.audioFormats.some(f => f.url);
     if (hasDirectUrl) {
@@ -427,16 +574,27 @@ async function download(url, destPath, opts = {}) {
             }).on('error', reject);
         });
     }
+    const ytArgs = [
+        '-f', opts.format || 'bestaudio',
+        '--concurrent-fragments', String(concurrent),
+        '-o', opts.outputTemplate || destPath,
+        url,
+    ];
+    if (opts.extractAudio !== false && !opts.format) {
+        ytArgs.push('--extract-audio');
+        ytArgs.push('--audio-format', opts.audioFormat || 'mp3');
+    }
+    if (opts.downloader) {
+        const dlBase = path.basename(opts.downloader);
+        const dlName = path.basename(dlBase, path.extname(dlBase));
+        ytArgs.push('--downloader', opts.downloader);
+        if (opts.downloaderArgs) {
+            ytArgs.push('--downloader-args', `${dlName}:${opts.downloaderArgs}`);
+        }
+    }
     return new Promise((resolve, reject) => {
         import('node:child_process').then(({ spawn }) => {
-            const args = [
-                '-f', 'bestaudio',
-                '--extract-audio',
-                '--audio-format', 'mp3',
-                '-o', destPath,
-                url,
-            ];
-            const proc = spawn(ytDlpPath, args, { stdio: ['ignore', 'inherit', 'inherit'] });
+            const proc = spawn(ytDlpPath, ytArgs, { stdio: ['ignore', 'inherit', 'inherit'] });
             proc.on('exit', (code) => {
                 if (code === 0)
                     resolve();

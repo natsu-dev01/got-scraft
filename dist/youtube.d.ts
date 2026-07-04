@@ -36,6 +36,13 @@ export interface YouTubeOptions {
     preferAudioItag?: number;
     preferVideoItag?: number;
     ytDlpPath?: string;
+    concurrentFragments?: number;
+    downloader?: string;
+    downloaderArgs?: string;
+    format?: string;
+    extractAudio?: boolean;
+    audioFormat?: string;
+    outputTemplate?: string;
 }
 export interface YtDlpFormat {
     format_id: string;
@@ -58,6 +65,7 @@ export interface YtDlpFormat {
 }
 declare function extractYouTubeId(url: string): string | null;
 export declare function getVideoInfo(url: string, opts?: YouTubeOptions): Promise<YouTubeVideoInfo>;
+export declare function ensureAria2c(): Promise<string | null>;
 export declare function getDirectUrl(url: string, formatSelector: string, opts?: YouTubeOptions): Promise<{
     url: string;
     itag: number;

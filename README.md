@@ -249,6 +249,49 @@ async function scrapeVideo() {
 scrapeVideo().catch(console.error);
 ```
 
+## YouTube scraper
+
+Extrae metadata, formatos y URLs de streaming. Si YouTube cifra las URLs (casi siempre), `got-scraft` descarga **yt-dlp** automáticamente desde GitHub y lo usa para descifrarlas.
+
+```js
+const got = require('got-scraft');
+
+// Metadata + formatos
+const info = await got.getVideoInfo('https://youtu.be/dQw4w9WgXcQ');
+console.log(info.title);       // Rick Astley - Never Gonna Give You Up
+console.log(info.author);      // Rick Astley
+console.log(info.lengthSeconds); // 213
+console.log(info.formats);     // [27 formatos con itag, calidad, codecs]
+
+// URLs de streaming descifradas (usa yt-dlp si es necesario)
+const audio = await got.getAudioUrl('https://youtu.be/dQw4w9WgXcQ');
+console.log(audio.url);        // URL real de streaming
+
+const video = await got.getVideoUrl('https://youtu.be/dQw4w9WgXcQ');
+console.log(video.url);
+
+// Descargar audio como MP3
+await got.download('https://youtu.be/dQw4w9WgXcQ', './audio.mp3');
+```
+
+### API YouTube
+
+| Función | Descripción |
+|---------|-------------|
+| `getVideoInfo(url, opts?)` | Metadata + todos los formatos |
+| `getAudioUrl(url, opts?)` | URL de streaming de audio (mejor calidad) |
+| `getVideoUrl(url, opts?)` | URL de streaming de video |
+| `getDirectUrl(url, formatSelector, opts?)` | URL para un itag específico |
+| `download(url, dest, opts?)` | Descarga audio como MP3 |
+
+**Opciones:**
+
+| Opción | Tipo | Descripción |
+|--------|------|-------------|
+| `preferAudioItag` | number | Itag preferido para audio (ej: 140 = m4a 128kbps, 251 = webm 160kbps) |
+| `preferVideoItag` | number | Itag preferido para video (ej: 18 = 360p, 137 = 1080p) |
+| `ytDlpPath` | string | Ruta personalizada a yt-dlp (si no se especifica, se descarga solo) |
+
 ## Dependencias
 
 | Paquete | Versión | Uso |

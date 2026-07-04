@@ -41,7 +41,7 @@ import {
 import type { FbContent } from './facebook';
 import {
   getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download,
-  extractYouTubeId,
+  ensureAria2c, extractYouTubeId,
 } from './youtube';
 import type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions } from './youtube';
 
@@ -223,7 +223,7 @@ export {
 
   // YouTube
   getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download,
-  extractYouTubeId,
+  ensureAria2c, extractYouTubeId,
 };
 
 export type {
