@@ -13,7 +13,7 @@ npm install https://github.com/natsu-dev01/got-scraft.git
 ### Peticiones HTTP
 
 ```js
-const { fetch, fetchWithRetry, createClient } = require('./index');
+const { fetch, fetchWithRetry, createClient } = require('got-scraft');
 
 // GET simple
 const html = await fetch('https://ejemplo.com');
@@ -29,7 +29,7 @@ const html = await fetch('https://ejemplo.com', { client });
 ### Parseo HTML
 
 ```js
-const { load, getMeta, getAllMeta, getText, getLines, matchText } = require('./index');
+const { load, getMeta, getAllMeta, getText, getLines, matchText } = require('got-scraft');
 
 const $ = load(html);
 
@@ -44,7 +44,7 @@ matchText(text, [/patron1/, /patron2/]);  // Primer match
 ### Utilidades
 
 ```js
-const { parseNumber, rand, sleep, pick, shuffle, saveJSON, loadJSON } = require('./index');
+const { parseNumber, rand, sleep, pick, shuffle, saveJSON, loadJSON } = require('got-scraft');
 
 parseNumber('1.5k');    // "1500"
 parseNumber('2M');      // "2000000"
@@ -59,7 +59,7 @@ loadJSON('file.json');
 ## Ejemplo rápido
 
 ```js
-const { fetch, load, getMeta, getAllMeta } = require('./index');
+const { fetch, load, getMeta, getAllMeta } = require('got-scraft');
 
 async function main() {
   const html = await fetch('https://ejemplo.com');
