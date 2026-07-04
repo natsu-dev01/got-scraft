@@ -77,7 +77,6 @@ Object.defineProperty(exports, "extractPageName", { enumerable: true, get: funct
 const INTEGRITY = {
     '2.0.0': '515c8e83f6020ea5e23abe7e9bcdef0bd3565cd81d43f6d48cce7d1dc48ff79a',
     '2.1.0': '7d58bff27aa800a01a92bd50bc5c421f00fc67ebe911472f53bf37a12347a967',
-    '2.2.0': '2fb23f8468a0f215601870f37c9dfa9b87964fd49e12dca71f868bb3a77407f6',
 };
 exports.integrityMap = INTEGRITY;
 async function scrapeMeta(url, opts = {}) {
@@ -154,7 +153,15 @@ async function scrapeFacebook(url, opts = {}) {
 function verify() {
     const fs = require('node:fs');
     const path = require('node:path');
-    const expected = INTEGRITY[package_json_1.default.version];
+    const integrityFile = path.join(__dirname, '.integrity');
+    let expected = null;
+    try {
+        expected = fs.readFileSync(integrityFile, 'utf-8').trim();
+    }
+    catch {
+        // Fallback to hardcoded INTEGRITY map
+        expected = INTEGRITY[package_json_1.default.version] || null;
+    }
     if (!expected) {
         return { ok: false, version: package_json_1.default.version, error: 'No integrity hash for this version' };
     }

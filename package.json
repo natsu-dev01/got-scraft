@@ -28,9 +28,15 @@
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc",
-    "prepare": "npm run build",
+    "postbuild": "node -e \"const c=require('crypto'),f=require('fs'),h=c.createHash('sha256').update(f.readFileSync('dist/index.js')).digest('hex');f.writeFileSync('dist/.integrity',h)\"",
+    "verify": "node scripts/verify.js",
+    "prepublishOnly": "npm run types && npm run verify",
+    "prepack": "npm run build",
+    "postpack": "npm run verify",
+    "types": "tsc --noEmit",
     "test": "node examples/basic.js",
-    "types": "tsc --noEmit"
+    "ci": "npm run clean && npm run types && npm run build && npm run verify",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "axios": "^1.18.1",

@@ -2,4 +2,6 @@
 SECURITY.md
 tsconfig.json
 examples/
+scripts/
 src/*.ts
+dist/.integrity

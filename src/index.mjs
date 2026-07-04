@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url);
 const mod = require('../dist/index.js');
 
 export const {
-  version,
+  version, verify,
   fetch, fetchWithRetry, post, createClient, createSession,
   load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML,
   extractLinks, extractImages, extractScripts, extractStyles,
