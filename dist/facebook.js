@@ -56,8 +56,11 @@ function extractFacebookVideo(url) {
         /facebook\.com\/[^/]+\/videos\/(\d+)/,
         /facebook\.com\/watch\/?\?v=(\d+)/,
         /fb\.watch\/([a-zA-Z0-9]+)/,
-        /facebook\.com\/reel\/(\d+)/,
+        /facebook\.com\/reel\/([a-zA-Z0-9_-]+)/,
         /facebook\.com\/video\.php\?v=(\d+)/,
+        /facebook\.com\/share\/v\/([a-zA-Z0-9_-]+)/,
+        /facebook\.com\/share\/r\/(\d+)/,
+        /facebook\.com\/reel\/video\/([a-zA-Z0-9_-]+)/,
     ];
     for (const p of patterns) {
         const m = url.match(p);
@@ -115,7 +118,35 @@ function parseMbasicContent(html) {
     const clean = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
-    const textMatch = clean.match(/<div[^>]*id="(?:root|content)"[^>]*>[\s\S]*?<\/div>/i);
+    // Extraer URLs de video desde el HTML crudo (antes de limpiar scripts)
+    const hdMatch = html.match(/browser_native_hd_url"\s*:\s*"([^"]+)"/);
+    const sdMatch = html.match(/browser_native_sd_url"\s*:\s*"([^"]+)"/);
+    const playbackMatch = html.match(/playable_url"\s*:\s*"([^"]+)"/);
+    const playbackHdMatch = html.match(/playable_url_quality_hd"\s*:\s*"([^"]+)"/);
+    const srcMatch = html.match(/video_src"\s*:\s*"([^"]+)"/);
+    if (hdMatch)
+        result.videos.push(hdMatch[1].replace(/\\\//g, '/'));
+    if (playbackHdMatch)
+        result.videos.push(playbackHdMatch[1].replace(/\\\//g, '/'));
+    if (sdMatch)
+        result.videos.push(sdMatch[1].replace(/\\\//g, '/'));
+    if (playbackMatch)
+        result.videos.push(playbackMatch[1].replace(/\\\//g, '/'));
+    if (srcMatch)
+        result.videos.push(srcMatch[1].replace(/\\\//g, '/'));
+    // Buscar URLs de video en JSON-LD
+    const jsonLdMatch = html.match(/<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonLdMatch) {
+        try {
+            const jsonLd = JSON.parse(jsonLdMatch[1]);
+            if (jsonLd.contentUrl)
+                result.videos.push(jsonLd.contentUrl);
+            if (jsonLd.embedUrl)
+                result.videos.push(jsonLd.embedUrl);
+        }
+        catch { /* ignore */ }
+    }
+    const textMatch = clean.match(/<div[^>]*id="(?:root|content|message)"[^>]*>[\s\S]*?<\/div>/i);
     if (textMatch) {
         result.text = textMatch[0]
             .replace(/<[^>]+>/g, ' ')
@@ -130,11 +161,6 @@ function parseMbasicContent(html) {
         if (src && !src.includes('emoji') && !src.includes('transparent')) {
             result.images.push(src);
         }
-    }
-    const videoRegex = /<video[^>]+src="([^"]+)"[^>]*>|<a[^>]+href="([^"]*video[^"]*)"[^>]*>/gi;
-    let vidMatch;
-    while ((vidMatch = videoRegex.exec(clean)) !== null) {
-        result.videos.push(vidMatch[1] || vidMatch[2] || '');
     }
     const linkRegex = /<a[^>]+href="([^"]+)"[^>]*>/gi;
     let linkMatch;

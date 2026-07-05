@@ -86,6 +86,7 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
     name: string;
     url: string;
     headers: Record<string, string>;
+    raw?: boolean;
   }
 
   const strategies: Strategy[] = [];
@@ -94,6 +95,19 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
     name: 'mbasic',
     url: toMobileUrl(url),
     headers: buildFbHeaders('mobile'),
+  });
+
+  strategies.push({
+    name: 'desktop',
+    url: url,
+    headers: buildFbHeaders('desktop'),
+  });
+
+  strategies.push({
+    name: 'desktop-raw',
+    url: url,
+    headers: buildFbHeaders('desktop'),
+    raw: true,
   });
 
   if (opts.tryGraphApi) {
@@ -107,11 +121,7 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
     }
   }
 
-  strategies.push({
-    name: 'desktop',
-    url: url,
-    headers: buildFbHeaders('desktop'),
-  });
+  let best: { name: string; content: FbContent | Record<string, unknown> | null } | null = null;
 
   for (const strategy of strategies) {
     try {
@@ -121,11 +131,30 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
       });
 
       if (strategy.name === 'graph') {
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
         return {
           success: true,
           source: 'graph',
-          content: typeof data === 'string' ? JSON.parse(data) : data,
+          content: parsed,
         };
+      }
+
+      if (strategy.raw) {
+        const videos: string[] = [];
+        const hdMatch = data.match(/browser_native_hd_url"\s*:\s*"([^"]+)"/);
+        const sdMatch = data.match(/browser_native_sd_url"\s*:\s*"([^"]+)"/);
+        const pbMatch = data.match(/playable_url"\s*:\s*"([^"]+)"/);
+        if (hdMatch) videos.push(hdMatch[1].replace(/\\\//g, '/'));
+        if (sdMatch) videos.push(sdMatch[1].replace(/\\\//g, '/'));
+        if (pbMatch) videos.push(pbMatch[1].replace(/\\\//g, '/'));
+
+        if (videos.length > 0) {
+          const parsed = parseMbasicContent(data);
+          parsed.videos = [...videos, ...parsed.videos];
+          best = { name: strategy.name, content: parsed };
+          break;
+        }
+        continue;
       }
 
       const parsed = parseMbasicContent(data);
@@ -134,14 +163,18 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
         continue;
       }
 
-      return {
-        success: true,
-        source: strategy.name,
-        content: parsed,
-      };
+      if (parsed.videos.length > 0 || !best) {
+        best = { name: strategy.name, content: parsed };
+      }
+
+      if (parsed.videos.length > 0) break;
     } catch {
       continue;
     }
+  }
+
+  if (best) {
+    return { success: true, source: best.name, content: best.content };
   }
 
   return {

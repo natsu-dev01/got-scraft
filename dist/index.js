@@ -113,6 +113,17 @@ async function scrapeFacebook(url, opts = {}) {
         url: (0, facebook_1.toMobileUrl)(url),
         headers: (0, facebook_1.buildFbHeaders)('mobile'),
     });
+    strategies.push({
+        name: 'desktop',
+        url: url,
+        headers: (0, facebook_1.buildFbHeaders)('desktop'),
+    });
+    strategies.push({
+        name: 'desktop-raw',
+        url: url,
+        headers: (0, facebook_1.buildFbHeaders)('desktop'),
+        raw: true,
+    });
     if (opts.tryGraphApi) {
         const graphUrl = (0, facebook_1.toGraphApiUrl)(url);
         if (graphUrl) {
@@ -123,11 +134,7 @@ async function scrapeFacebook(url, opts = {}) {
             });
         }
     }
-    strategies.push({
-        name: 'desktop',
-        url: url,
-        headers: (0, facebook_1.buildFbHeaders)('desktop'),
-    });
+    let best = null;
     for (const strategy of strategies) {
         try {
             const { data } = await client.get(strategy.url, {
@@ -135,25 +142,48 @@ async function scrapeFacebook(url, opts = {}) {
                 responseType: 'text',
             });
             if (strategy.name === 'graph') {
+                const parsed = typeof data === 'string' ? JSON.parse(data) : data;
                 return {
                     success: true,
                     source: 'graph',
-                    content: typeof data === 'string' ? JSON.parse(data) : data,
+                    content: parsed,
                 };
+            }
+            if (strategy.raw) {
+                const videos = [];
+                const hdMatch = data.match(/browser_native_hd_url"\s*:\s*"([^"]+)"/);
+                const sdMatch = data.match(/browser_native_sd_url"\s*:\s*"([^"]+)"/);
+                const pbMatch = data.match(/playable_url"\s*:\s*"([^"]+)"/);
+                if (hdMatch)
+                    videos.push(hdMatch[1].replace(/\\\//g, '/'));
+                if (sdMatch)
+                    videos.push(sdMatch[1].replace(/\\\//g, '/'));
+                if (pbMatch)
+                    videos.push(pbMatch[1].replace(/\\\//g, '/'));
+                if (videos.length > 0) {
+                    const parsed = (0, facebook_1.parseMbasicContent)(data);
+                    parsed.videos = [...videos, ...parsed.videos];
+                    best = { name: strategy.name, content: parsed };
+                    break;
+                }
+                continue;
             }
             const parsed = (0, facebook_1.parseMbasicContent)(data);
             if (parsed.error === 'blocked') {
                 continue;
             }
-            return {
-                success: true,
-                source: strategy.name,
-                content: parsed,
-            };
+            if (parsed.videos.length > 0 || !best) {
+                best = { name: strategy.name, content: parsed };
+            }
+            if (parsed.videos.length > 0)
+                break;
         }
         catch {
             continue;
         }
+    }
+    if (best) {
+        return { success: true, source: best.name, content: best.content };
     }
     return {
         success: false,

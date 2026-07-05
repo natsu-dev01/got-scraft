@@ -122,6 +122,8 @@ function isBlocked(html) {
         'our systems have detected unusual traffic', 'enter the code below',
         'security check', 'prove you\'re not a robot', 'js-challenge',
         'cf-challenge', 'ddos-guard', 'perimeterx', 'blocked because of malicious activity',
+        'iniciar sesión', 'crear cuenta nueva', 'crear nueva cuenta',
+        'log in', 'sign up', 'create new account',
     ];
     const normalized = html.toLowerCase();
     return signals.some(signal => normalized.includes(signal));
