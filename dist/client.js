@@ -70,13 +70,20 @@ function createClient(opts = {}) {
             // axios-cookiejar-support no instalado
         }
     }
+    if (opts.requestInterceptor) {
+        client.interceptors.request.use(opts.requestInterceptor);
+    }
+    if (opts.responseInterceptor) {
+        client.interceptors.response.use(opts.responseInterceptor);
+    }
+    if (opts.errorInterceptor) {
+        client.interceptors.response.use(undefined, opts.errorInterceptor);
+    }
     return client;
 }
 const PLATFORM_PREFIXES = {
     '.fb': 'facebook',
     '.facebook': 'facebook',
-    '.yt': 'youtube',
-    '.youtube': 'youtube',
     '.tw': 'twitter',
     '.x': 'twitter',
     '.tiktok': 'tiktok',
@@ -126,6 +133,10 @@ function createSession(opts = {}) {
             const finalUrl = reqOpts.cacheBust !== false ? (0, anti_1.cacheBust)(cleanUrl) : cleanUrl;
             const { data } = await client.get(finalUrl, {
                 responseType: (reqOpts.responseType || 'text'),
+                headers: reqOpts.headers,
+                params: reqOpts.params,
+                timeout: reqOpts.timeout,
+                signal: reqOpts.signal,
             });
             return data;
         },
@@ -143,10 +154,50 @@ function createSession(opts = {}) {
             }
             lastRequest = Date.now();
             const { data } = await client.post(cleanUrl, body, {
-                headers: { 'Content-Type': reqOpts.contentType || 'application/x-www-form-urlencoded' },
+                headers: {
+                    'Content-Type': reqOpts.contentType || 'application/x-www-form-urlencoded',
+                    ...reqOpts.headers,
+                },
                 responseType: (reqOpts.responseType || 'text'),
+                params: reqOpts.params,
+                timeout: reqOpts.timeout,
+                signal: reqOpts.signal,
             });
             return data;
+        },
+        async head(url, reqOpts = {}) {
+            const { url: cleanUrl } = resolveUrl(url);
+            if (!isValidUrl(cleanUrl)) {
+                throw new Error(`Invalid URL: "${cleanUrl}"`);
+            }
+            await throttler.wait();
+            const now = Date.now();
+            const minGap = reqOpts.minGap || opts.minGap || 2000;
+            const elapsed = now - lastRequest;
+            if (elapsed < minGap) {
+                await (0, utils_1.sleep)(minGap - elapsed);
+            }
+            lastRequest = Date.now();
+            return client.head(cleanUrl, {
+                headers: reqOpts.headers,
+                timeout: reqOpts.timeout,
+                signal: reqOpts.signal,
+            });
+        },
+        async request(config) {
+            const { url: cleanUrl } = resolveUrl(config.url);
+            if (!isValidUrl(cleanUrl)) {
+                throw new Error(`Invalid URL: "${cleanUrl}"`);
+            }
+            await throttler.wait();
+            const now = Date.now();
+            const minGap = opts.minGap || 2000;
+            const elapsed = now - lastRequest;
+            if (elapsed < minGap) {
+                await (0, utils_1.sleep)(minGap - elapsed);
+            }
+            lastRequest = Date.now();
+            return client.request({ ...config, url: cleanUrl });
         },
         rotateProxy() {
             if (!this.rotator)

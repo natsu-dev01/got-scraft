@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 import pkg from '../package.json';
-import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-import { fetch, fetchWithRetry, post } from './http';
+import { fetch, fetchRaw, fetchWithRetry, post, put, patch, del, head, fetchStream, downloadFile } from './http';
 import type { FetchOptions, RetryOptions } from './http';
 import { createClient, createSession, resolveUrl, isValidUrl } from './client';
-import type { ClientOptions, Session } from './client';
+import type { ClientOptions, Session, SessionReqOpts, SessionPostOpts } from './client';
 import {
   load, getMeta, getAllMeta, getOG,
   getText, getLines, matchText, stripHTML, parseNumber,
@@ -39,11 +39,7 @@ import {
   extractFacebookPostId, extractPageName,
 } from './facebook';
 import type { FbContent } from './facebook';
-import {
-  getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download,
-  ensureAria2c, extractYouTubeId,
-} from './youtube';
-import type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions } from './youtube';
+
 
 const INTEGRITY: Record<string, string> = {
   '2.0.0': '515c8e83f6020ea5e23abe7e9bcdef0bd3565cd81d43f6d48cce7d1dc48ff79a',
@@ -185,17 +181,13 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
   };
 }
 
-export type Platform = 'facebook' | 'youtube' | 'twitter' | 'tiktok' | 'instagram' | 'generic';
+export type Platform = 'facebook' | 'twitter' | 'tiktok' | 'instagram' | 'generic';
 
 const PLATFORM_PATTERNS: Record<Platform, RegExp[]> = {
   facebook: [
     /facebook\.com\//,
     /fb\.com\//,
     /fb\.watch\//,
-  ],
-  youtube: [
-    /youtube\.com\//,
-    /youtu\.be\//,
   ],
   twitter: [
     /twitter\.com\//,
@@ -248,16 +240,6 @@ export async function scrapeUrl(url: string, opts: ClientOptions & { tryGraphApi
         success: fbResult.success,
         data: fbResult.content as Record<string, unknown> | null,
         error: fbResult.error,
-      };
-    }
-
-    if (platform === 'youtube') {
-      const ytResult = await getVideoInfo(cleanUrl);
-      return {
-        url: cleanUrl,
-        platform,
-        success: true,
-        data: ytResult as unknown as Record<string, unknown>,
       };
     }
 
@@ -330,7 +312,8 @@ export {
   INTEGRITY as integrityMap,
 
   // HTTP
-  fetch, fetchWithRetry, post, createClient, createSession,
+  fetch, fetchRaw, fetchWithRetry, post, put, patch, del, head, fetchStream, downloadFile,
+  createClient, createSession,
 
   // URL helpers
   resolveUrl, isValidUrl,
@@ -362,25 +345,18 @@ export {
   parseMbasicContent, extractFacebookVideo,
   extractFacebookPostId, extractPageName,
 
-  // YouTube
-  getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download,
-  ensureAria2c, extractYouTubeId,
 };
 
-export type {
-  YouTubeVideoInfo,
-  YouTubeFormat,
-  YouTubeOptions,
-};
-
-// Type exports for consumers
 export type {
   AxiosInstance,
+  AxiosResponse,
   AxiosRequestConfig,
   FetchOptions,
   RetryOptions,
   ClientOptions,
   Session,
+  SessionReqOpts,
+  SessionPostOpts,
   LoadOptions,
   MatchResult,
   FormData,

@@ -5,7 +5,8 @@ const mod = require('../dist/index.js');
 
 export const {
   version, verify,
-  fetch, fetchWithRetry, post, createClient, createSession,
+  fetch, fetchRaw, fetchWithRetry, post, put, patch, del, head, fetchStream, downloadFile,
+  createClient, createSession,
   load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML,
   extractLinks, extractImages, extractScripts, extractStyles,
   extractEmails, extractIFrames, extractForms, extractJsonLd,
@@ -19,8 +20,6 @@ export const {
   buildFbHeaders, toMobileUrl, toGraphApiUrl,
   parseMbasicContent, extractFacebookVideo,
   extractFacebookPostId, extractPageName,
-  getVideoInfo, getAudioUrl, getVideoUrl, download,
-  extractYouTubeId,
 } = mod;
 
 export default mod;

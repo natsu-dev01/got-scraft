@@ -1,4 +1,4 @@
-import type { AxiosInstance } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import type { BuildHeadersOptions } from './headers';
 import { Throttler, ProxyRotator } from './anti';
 import { HttpsProxyAgent } from 'https-proxy-agent';
@@ -16,22 +16,33 @@ export interface ClientOptions extends BuildHeadersOptions {
     minGap?: number;
     maxRPM?: number;
     throttler?: Throttler;
+    requestInterceptor?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>;
+    responseInterceptor?: (response: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>;
+    errorInterceptor?: (error: any) => any;
 }
 export interface Session {
     client: AxiosInstance;
     throttler: Throttler;
     rotator: ProxyRotator | null;
-    get(url: string, reqOpts?: {
-        responseType?: string;
-        minGap?: number;
-        cacheBust?: boolean;
-    }): Promise<string>;
-    post(url: string, body: unknown, reqOpts?: {
-        responseType?: string;
-        minGap?: number;
-        contentType?: string;
-    }): Promise<string>;
+    get(url: string, reqOpts?: SessionReqOpts): Promise<string>;
+    post(url: string, body: unknown, reqOpts?: SessionPostOpts): Promise<string>;
+    head(url: string, reqOpts?: SessionReqOpts): Promise<AxiosResponse>;
+    request(config: AxiosRequestConfig & {
+        url: string;
+    }): Promise<AxiosResponse>;
     rotateProxy(): void;
+}
+export interface SessionReqOpts {
+    responseType?: string;
+    minGap?: number;
+    cacheBust?: boolean;
+    headers?: Record<string, string>;
+    params?: Record<string, string>;
+    timeout?: number;
+    signal?: AbortSignal;
+}
+export interface SessionPostOpts extends SessionReqOpts {
+    contentType?: string;
 }
 export declare function createClient(opts?: ClientOptions): AxiosInstance;
 export declare function resolveUrl(input: string): {

@@ -1,9 +1,9 @@
 import pkg from '../package.json';
-import type { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { fetch, fetchWithRetry, post } from './http';
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { fetch, fetchRaw, fetchWithRetry, post, put, patch, del, head, fetchStream, downloadFile } from './http';
 import type { FetchOptions, RetryOptions } from './http';
 import { createClient, createSession, resolveUrl, isValidUrl } from './client';
-import type { ClientOptions, Session } from './client';
+import type { ClientOptions, Session, SessionReqOpts, SessionPostOpts } from './client';
 import { load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML, parseNumber } from './parser';
 import type { LoadOptions, MatchResult } from './parser';
 import { extractLinks, extractImages, extractScripts, extractStyles, extractEmails, extractIFrames, extractForms, extractJsonLd } from './extract';
@@ -16,8 +16,6 @@ import { cookiesFromFile, cookiesFromNetscape, cookiesFromBrowser, cookiesToHead
 import { rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay, saveJSON, loadJSON, log } from './utils';
 import { buildFbHeaders, toMobileUrl, toGraphApiUrl, parseMbasicContent, extractFacebookVideo, extractFacebookPostId, extractPageName } from './facebook';
 import type { FbContent } from './facebook';
-import { getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download, ensureAria2c, extractYouTubeId } from './youtube';
-import type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions } from './youtube';
 declare const INTEGRITY: Record<string, string>;
 export interface MetaResult {
     url: string;
@@ -35,7 +33,7 @@ export interface FbResult {
 export declare function scrapeFacebook(url: string, opts?: ClientOptions & {
     tryGraphApi?: boolean;
 }): Promise<FbResult>;
-export type Platform = 'facebook' | 'youtube' | 'twitter' | 'tiktok' | 'instagram' | 'generic';
+export type Platform = 'facebook' | 'twitter' | 'tiktok' | 'instagram' | 'generic';
 export declare function detectPlatform(url: string): Platform;
 export interface ScrapeResult {
     url: string;
@@ -56,7 +54,6 @@ export interface VerifyResult {
 }
 export declare function verify(): VerifyResult;
 export declare const version: string;
-export { pkg as packageInfo, INTEGRITY as integrityMap, fetch, fetchWithRetry, post, createClient, createSession, resolveUrl, isValidUrl, load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML, parseNumber, extractLinks, extractImages, extractScripts, extractStyles, extractEmails, extractIFrames, extractForms, extractJsonLd, ProxyRotator, Throttler, cacheBust, isBlocked, inspectResponse, buildHeaders, buildSecChUa, PROFILES, AGENTS, REFERERS, LANGUAGES, cookiesFromFile, cookiesFromNetscape, cookiesFromBrowser, cookiesToHeader, mergeCookies, rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay, saveJSON, loadJSON, log, buildFbHeaders, toMobileUrl, toGraphApiUrl, parseMbasicContent, extractFacebookVideo, extractFacebookPostId, extractPageName, getVideoInfo, getAudioUrl, getVideoUrl, getDirectUrl, download, ensureAria2c, extractYouTubeId, };
-export type { YouTubeVideoInfo, YouTubeFormat, YouTubeOptions, };
-export type { AxiosInstance, AxiosRequestConfig, FetchOptions, RetryOptions, ClientOptions, Session, LoadOptions, MatchResult, FormData, BuildHeadersOptions, DeviceProfile, InspectResult, FbContent, };
+export { pkg as packageInfo, INTEGRITY as integrityMap, fetch, fetchRaw, fetchWithRetry, post, put, patch, del, head, fetchStream, downloadFile, createClient, createSession, resolveUrl, isValidUrl, load, getMeta, getAllMeta, getOG, getText, getLines, matchText, stripHTML, parseNumber, extractLinks, extractImages, extractScripts, extractStyles, extractEmails, extractIFrames, extractForms, extractJsonLd, ProxyRotator, Throttler, cacheBust, isBlocked, inspectResponse, buildHeaders, buildSecChUa, PROFILES, AGENTS, REFERERS, LANGUAGES, cookiesFromFile, cookiesFromNetscape, cookiesFromBrowser, cookiesToHeader, mergeCookies, rand, pick, shuffle, shuffleObjectKeys, sleep, randomDelay, saveJSON, loadJSON, log, buildFbHeaders, toMobileUrl, toGraphApiUrl, parseMbasicContent, extractFacebookVideo, extractFacebookPostId, extractPageName, };
+export type { AxiosInstance, AxiosResponse, AxiosRequestConfig, FetchOptions, RetryOptions, ClientOptions, Session, SessionReqOpts, SessionPostOpts, LoadOptions, MatchResult, FormData, BuildHeadersOptions, DeviceProfile, InspectResult, FbContent, };
 //# sourceMappingURL=index.d.ts.map

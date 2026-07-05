@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { buildHeaders } from './headers';
 import type { BuildHeadersOptions, DeviceProfile } from './headers';
 import { cacheBust, Throttler, ProxyRotator } from './anti';
@@ -20,15 +20,34 @@ export interface ClientOptions extends BuildHeadersOptions {
   minGap?: number;
   maxRPM?: number;
   throttler?: Throttler;
+  requestInterceptor?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>;
+  responseInterceptor?: (response: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>;
+  errorInterceptor?: (error: any) => any;
 }
 
 export interface Session {
   client: AxiosInstance;
   throttler: Throttler;
   rotator: ProxyRotator | null;
-  get(url: string, reqOpts?: { responseType?: string; minGap?: number; cacheBust?: boolean }): Promise<string>;
-  post(url: string, body: unknown, reqOpts?: { responseType?: string; minGap?: number; contentType?: string }): Promise<string>;
+  get(url: string, reqOpts?: SessionReqOpts): Promise<string>;
+  post(url: string, body: unknown, reqOpts?: SessionPostOpts): Promise<string>;
+  head(url: string, reqOpts?: SessionReqOpts): Promise<AxiosResponse>;
+  request(config: AxiosRequestConfig & { url: string }): Promise<AxiosResponse>;
   rotateProxy(): void;
+}
+
+export interface SessionReqOpts {
+  responseType?: string;
+  minGap?: number;
+  cacheBust?: boolean;
+  headers?: Record<string, string>;
+  params?: Record<string, string>;
+  timeout?: number;
+  signal?: AbortSignal;
+}
+
+export interface SessionPostOpts extends SessionReqOpts {
+  contentType?: string;
 }
 
 export function createClient(opts: ClientOptions = {}): AxiosInstance {
@@ -89,14 +108,24 @@ export function createClient(opts: ClientOptions = {}): AxiosInstance {
     }
   }
 
+  if (opts.requestInterceptor) {
+    client.interceptors.request.use(opts.requestInterceptor);
+  }
+
+  if (opts.responseInterceptor) {
+    client.interceptors.response.use(opts.responseInterceptor);
+  }
+
+  if (opts.errorInterceptor) {
+    client.interceptors.response.use(undefined, opts.errorInterceptor);
+  }
+
   return client;
 }
 
 const PLATFORM_PREFIXES: Record<string, string> = {
   '.fb': 'facebook',
   '.facebook': 'facebook',
-  '.yt': 'youtube',
-  '.youtube': 'youtube',
   '.tw': 'twitter',
   '.x': 'twitter',
   '.tiktok': 'tiktok',
@@ -134,7 +163,7 @@ export function createSession(opts: ClientOptions = {}): Session {
     throttler,
     rotator,
 
-    async get(url: string, reqOpts: { responseType?: string; minGap?: number; cacheBust?: boolean } = {}) {
+    async get(url: string, reqOpts: SessionReqOpts = {}) {
       const { url: cleanUrl } = resolveUrl(url);
       if (!isValidUrl(cleanUrl)) {
         throw new Error(`Invalid URL: "${cleanUrl}"`);
@@ -154,12 +183,16 @@ export function createSession(opts: ClientOptions = {}): Session {
       const finalUrl = reqOpts.cacheBust !== false ? cacheBust(cleanUrl) : cleanUrl;
       const { data } = await client.get(finalUrl, {
         responseType: (reqOpts.responseType || 'text') as any,
+        headers: reqOpts.headers,
+        params: reqOpts.params,
+        timeout: reqOpts.timeout,
+        signal: reqOpts.signal,
       });
 
       return data;
     },
 
-    async post(url: string, body: unknown, reqOpts: { responseType?: string; minGap?: number; contentType?: string } = {}) {
+    async post(url: string, body: unknown, reqOpts: SessionPostOpts = {}) {
       const { url: cleanUrl } = resolveUrl(url);
       if (!isValidUrl(cleanUrl)) {
         throw new Error(`Invalid URL: "${cleanUrl}"`);
@@ -177,11 +210,61 @@ export function createSession(opts: ClientOptions = {}): Session {
 
       lastRequest = Date.now();
       const { data } = await client.post(cleanUrl, body, {
-        headers: { 'Content-Type': reqOpts.contentType || 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': reqOpts.contentType || 'application/x-www-form-urlencoded',
+          ...reqOpts.headers,
+        },
         responseType: (reqOpts.responseType || 'text') as any,
+        params: reqOpts.params,
+        timeout: reqOpts.timeout,
+        signal: reqOpts.signal,
       });
 
       return data;
+    },
+
+    async head(url: string, reqOpts: SessionReqOpts = {}) {
+      const { url: cleanUrl } = resolveUrl(url);
+      if (!isValidUrl(cleanUrl)) {
+        throw new Error(`Invalid URL: "${cleanUrl}"`);
+      }
+
+      await throttler.wait();
+
+      const now = Date.now();
+      const minGap = reqOpts.minGap || opts.minGap || 2000;
+      const elapsed = now - lastRequest;
+
+      if (elapsed < minGap) {
+        await sleep(minGap - elapsed);
+      }
+
+      lastRequest = Date.now();
+      return client.head(cleanUrl, {
+        headers: reqOpts.headers,
+        timeout: reqOpts.timeout,
+        signal: reqOpts.signal,
+      });
+    },
+
+    async request(config: AxiosRequestConfig & { url: string }) {
+      const { url: cleanUrl } = resolveUrl(config.url);
+      if (!isValidUrl(cleanUrl)) {
+        throw new Error(`Invalid URL: "${cleanUrl}"`);
+      }
+
+      await throttler.wait();
+
+      const now = Date.now();
+      const minGap = opts.minGap || 2000;
+      const elapsed = now - lastRequest;
+
+      if (elapsed < minGap) {
+        await sleep(minGap - elapsed);
+      }
+
+      lastRequest = Date.now();
+      return client.request({ ...config, url: cleanUrl });
     },
 
     rotateProxy() {
@@ -194,9 +277,9 @@ export function createSession(opts: ClientOptions = {}): Session {
 
       if (typeof parsed === 'string') {
         client.defaults.httpsAgent = this.rotator.getAgent(next) as any;
-        delete client.defaults.proxy;
+        delete (client.defaults as any).proxy;
       } else {
-        client.defaults.proxy = parsed as any;
+        (client.defaults as any).proxy = parsed as any;
         delete client.defaults.httpsAgent;
       }
     },

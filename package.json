@@ -1,6 +1,6 @@
 {
   "name": "got-scraft",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Módulo de scraping con axios + cheerio. Anti-bloqueo para cualquier web.",
   "license": "MIT",
   "repository": {
