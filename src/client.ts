@@ -92,6 +92,37 @@ export function createClient(opts: ClientOptions = {}): AxiosInstance {
   return client;
 }
 
+const PLATFORM_PREFIXES: Record<string, string> = {
+  '.fb': 'facebook',
+  '.facebook': 'facebook',
+  '.yt': 'youtube',
+  '.youtube': 'youtube',
+  '.tw': 'twitter',
+  '.x': 'twitter',
+  '.tiktok': 'tiktok',
+  '.ig': 'instagram',
+  '.instagram': 'instagram',
+};
+
+export function resolveUrl(input: string): { url: string; platform?: string } {
+  const trimmed = input.trim();
+  for (const [prefix, platform] of Object.entries(PLATFORM_PREFIXES)) {
+    if (trimmed.startsWith(prefix + ' ')) {
+      return { url: trimmed.slice(prefix.length + 1).trim(), platform };
+    }
+  }
+  return { url: trimmed };
+}
+
+export function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function createSession(opts: ClientOptions = {}): Session {
   const client = createClient({ ...opts, cookieJar: opts.cookieJar !== false });
   const throttler = opts.throttler || new Throttler(opts.maxRPM || 30);
@@ -104,6 +135,11 @@ export function createSession(opts: ClientOptions = {}): Session {
     rotator,
 
     async get(url: string, reqOpts: { responseType?: string; minGap?: number; cacheBust?: boolean } = {}) {
+      const { url: cleanUrl } = resolveUrl(url);
+      if (!isValidUrl(cleanUrl)) {
+        throw new Error(`Invalid URL: "${cleanUrl}"`);
+      }
+
       await throttler.wait();
 
       const now = Date.now();
@@ -115,7 +151,7 @@ export function createSession(opts: ClientOptions = {}): Session {
       }
 
       lastRequest = Date.now();
-      const finalUrl = reqOpts.cacheBust !== false ? cacheBust(url) : url;
+      const finalUrl = reqOpts.cacheBust !== false ? cacheBust(cleanUrl) : cleanUrl;
       const { data } = await client.get(finalUrl, {
         responseType: (reqOpts.responseType || 'text') as any,
       });
@@ -124,6 +160,11 @@ export function createSession(opts: ClientOptions = {}): Session {
     },
 
     async post(url: string, body: unknown, reqOpts: { responseType?: string; minGap?: number; contentType?: string } = {}) {
+      const { url: cleanUrl } = resolveUrl(url);
+      if (!isValidUrl(cleanUrl)) {
+        throw new Error(`Invalid URL: "${cleanUrl}"`);
+      }
+
       await throttler.wait();
 
       const now = Date.now();
@@ -135,7 +176,7 @@ export function createSession(opts: ClientOptions = {}): Session {
       }
 
       lastRequest = Date.now();
-      const { data } = await client.post(url, body, {
+      const { data } = await client.post(cleanUrl, body, {
         headers: { 'Content-Type': reqOpts.contentType || 'application/x-www-form-urlencoded' },
         responseType: (reqOpts.responseType || 'text') as any,
       });

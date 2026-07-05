@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createClient = createClient;
+exports.resolveUrl = resolveUrl;
+exports.isValidUrl = isValidUrl;
 exports.createSession = createSession;
 const axios_1 = __importDefault(require("axios"));
 const headers_1 = require("./headers");
@@ -70,6 +72,35 @@ function createClient(opts = {}) {
     }
     return client;
 }
+const PLATFORM_PREFIXES = {
+    '.fb': 'facebook',
+    '.facebook': 'facebook',
+    '.yt': 'youtube',
+    '.youtube': 'youtube',
+    '.tw': 'twitter',
+    '.x': 'twitter',
+    '.tiktok': 'tiktok',
+    '.ig': 'instagram',
+    '.instagram': 'instagram',
+};
+function resolveUrl(input) {
+    const trimmed = input.trim();
+    for (const [prefix, platform] of Object.entries(PLATFORM_PREFIXES)) {
+        if (trimmed.startsWith(prefix + ' ')) {
+            return { url: trimmed.slice(prefix.length + 1).trim(), platform };
+        }
+    }
+    return { url: trimmed };
+}
+function isValidUrl(url) {
+    try {
+        new URL(url);
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
 function createSession(opts = {}) {
     const client = createClient({ ...opts, cookieJar: opts.cookieJar !== false });
     const throttler = opts.throttler || new anti_1.Throttler(opts.maxRPM || 30);
@@ -80,6 +111,10 @@ function createSession(opts = {}) {
         throttler,
         rotator,
         async get(url, reqOpts = {}) {
+            const { url: cleanUrl } = resolveUrl(url);
+            if (!isValidUrl(cleanUrl)) {
+                throw new Error(`Invalid URL: "${cleanUrl}"`);
+            }
             await throttler.wait();
             const now = Date.now();
             const minGap = reqOpts.minGap || opts.minGap || 2000;
@@ -88,13 +123,17 @@ function createSession(opts = {}) {
                 await (0, utils_1.sleep)(minGap - elapsed);
             }
             lastRequest = Date.now();
-            const finalUrl = reqOpts.cacheBust !== false ? (0, anti_1.cacheBust)(url) : url;
+            const finalUrl = reqOpts.cacheBust !== false ? (0, anti_1.cacheBust)(cleanUrl) : cleanUrl;
             const { data } = await client.get(finalUrl, {
                 responseType: (reqOpts.responseType || 'text'),
             });
             return data;
         },
         async post(url, body, reqOpts = {}) {
+            const { url: cleanUrl } = resolveUrl(url);
+            if (!isValidUrl(cleanUrl)) {
+                throw new Error(`Invalid URL: "${cleanUrl}"`);
+            }
             await throttler.wait();
             const now = Date.now();
             const minGap = reqOpts.minGap || opts.minGap || 2000;
@@ -103,7 +142,7 @@ function createSession(opts = {}) {
                 await (0, utils_1.sleep)(minGap - elapsed);
             }
             lastRequest = Date.now();
-            const { data } = await client.post(url, body, {
+            const { data } = await client.post(cleanUrl, body, {
                 headers: { 'Content-Type': reqOpts.contentType || 'application/x-www-form-urlencoded' },
                 responseType: (reqOpts.responseType || 'text'),
             });

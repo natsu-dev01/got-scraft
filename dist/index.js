@@ -3,10 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.log = exports.loadJSON = exports.saveJSON = exports.randomDelay = exports.sleep = exports.shuffleObjectKeys = exports.shuffle = exports.pick = exports.rand = exports.mergeCookies = exports.cookiesToHeader = exports.cookiesFromBrowser = exports.cookiesFromNetscape = exports.cookiesFromFile = exports.LANGUAGES = exports.REFERERS = exports.AGENTS = exports.PROFILES = exports.buildSecChUa = exports.buildHeaders = exports.inspectResponse = exports.isBlocked = exports.cacheBust = exports.Throttler = exports.ProxyRotator = exports.extractJsonLd = exports.extractForms = exports.extractIFrames = exports.extractEmails = exports.extractStyles = exports.extractScripts = exports.extractImages = exports.extractLinks = exports.parseNumber = exports.stripHTML = exports.matchText = exports.getLines = exports.getText = exports.getOG = exports.getAllMeta = exports.getMeta = exports.load = exports.createSession = exports.createClient = exports.post = exports.fetchWithRetry = exports.fetch = exports.integrityMap = exports.packageInfo = exports.version = void 0;
-exports.extractYouTubeId = exports.ensureAria2c = exports.download = exports.getDirectUrl = exports.getVideoUrl = exports.getAudioUrl = exports.getVideoInfo = exports.extractPageName = exports.extractFacebookPostId = exports.extractFacebookVideo = exports.parseMbasicContent = exports.toGraphApiUrl = exports.toMobileUrl = exports.buildFbHeaders = void 0;
+exports.saveJSON = exports.randomDelay = exports.sleep = exports.shuffleObjectKeys = exports.shuffle = exports.pick = exports.rand = exports.mergeCookies = exports.cookiesToHeader = exports.cookiesFromBrowser = exports.cookiesFromNetscape = exports.cookiesFromFile = exports.LANGUAGES = exports.REFERERS = exports.AGENTS = exports.PROFILES = exports.buildSecChUa = exports.buildHeaders = exports.inspectResponse = exports.isBlocked = exports.cacheBust = exports.Throttler = exports.ProxyRotator = exports.extractJsonLd = exports.extractForms = exports.extractIFrames = exports.extractEmails = exports.extractStyles = exports.extractScripts = exports.extractImages = exports.extractLinks = exports.parseNumber = exports.stripHTML = exports.matchText = exports.getLines = exports.getText = exports.getOG = exports.getAllMeta = exports.getMeta = exports.load = exports.isValidUrl = exports.resolveUrl = exports.createSession = exports.createClient = exports.post = exports.fetchWithRetry = exports.fetch = exports.integrityMap = exports.packageInfo = exports.version = void 0;
+exports.extractYouTubeId = exports.ensureAria2c = exports.download = exports.getDirectUrl = exports.getVideoUrl = exports.getAudioUrl = exports.getVideoInfo = exports.extractPageName = exports.extractFacebookPostId = exports.extractFacebookVideo = exports.parseMbasicContent = exports.toGraphApiUrl = exports.toMobileUrl = exports.buildFbHeaders = exports.log = exports.loadJSON = void 0;
 exports.scrapeMeta = scrapeMeta;
 exports.scrapeFacebook = scrapeFacebook;
+exports.detectPlatform = detectPlatform;
+exports.scrapeUrl = scrapeUrl;
 exports.verify = verify;
 const node_crypto_1 = __importDefault(require("node:crypto"));
 const package_json_1 = __importDefault(require("../package.json"));
@@ -18,6 +20,8 @@ Object.defineProperty(exports, "post", { enumerable: true, get: function () { re
 const client_1 = require("./client");
 Object.defineProperty(exports, "createClient", { enumerable: true, get: function () { return client_1.createClient; } });
 Object.defineProperty(exports, "createSession", { enumerable: true, get: function () { return client_1.createSession; } });
+Object.defineProperty(exports, "resolveUrl", { enumerable: true, get: function () { return client_1.resolveUrl; } });
+Object.defineProperty(exports, "isValidUrl", { enumerable: true, get: function () { return client_1.isValidUrl; } });
 const parser_1 = require("./parser");
 Object.defineProperty(exports, "load", { enumerable: true, get: function () { return parser_1.load; } });
 Object.defineProperty(exports, "getMeta", { enumerable: true, get: function () { return parser_1.getMeta; } });
@@ -157,6 +161,96 @@ async function scrapeFacebook(url, opts = {}) {
         content: null,
         error: 'All Facebook strategies failed (blocked or unreachable)',
     };
+}
+const PLATFORM_PATTERNS = {
+    facebook: [
+        /facebook\.com\//,
+        /fb\.com\//,
+        /fb\.watch\//,
+    ],
+    youtube: [
+        /youtube\.com\//,
+        /youtu\.be\//,
+    ],
+    twitter: [
+        /twitter\.com\//,
+        /x\.com\//,
+        /t\.co\//,
+    ],
+    tiktok: [
+        /tiktok\.com\//,
+        /vm\.tiktok\//,
+    ],
+    instagram: [
+        /instagram\.com\//,
+        /instagr\.am\//,
+    ],
+    generic: [],
+};
+function detectPlatform(url) {
+    const { url: cleanUrl, platform } = (0, client_1.resolveUrl)(url);
+    if (platform)
+        return platform;
+    for (const [platformName, patterns] of Object.entries(PLATFORM_PATTERNS)) {
+        if (platformName === 'generic')
+            continue;
+        for (const p of patterns) {
+            if (p.test(cleanUrl))
+                return platformName;
+        }
+    }
+    return 'generic';
+}
+async function scrapeUrl(url, opts = {}) {
+    const { url: cleanUrl, platform: prefixPlatform } = (0, client_1.resolveUrl)(url);
+    const platform = prefixPlatform ? prefixPlatform : detectPlatform(cleanUrl);
+    try {
+        if (platform === 'facebook') {
+            const fbResult = await scrapeFacebook(cleanUrl, opts);
+            return {
+                url: cleanUrl,
+                platform,
+                success: fbResult.success,
+                data: fbResult.content,
+                error: fbResult.error,
+            };
+        }
+        if (platform === 'youtube') {
+            const ytResult = await (0, youtube_1.getVideoInfo)(cleanUrl);
+            return {
+                url: cleanUrl,
+                platform,
+                success: true,
+                data: ytResult,
+            };
+        }
+        const html = await (0, http_1.fetch)(cleanUrl, { ...opts, cookieJar: false });
+        const $ = (0, parser_1.load)(html);
+        const meta = (0, parser_1.getAllMeta)($);
+        const og = (0, parser_1.getOG)($);
+        return {
+            url: cleanUrl,
+            platform,
+            success: true,
+            data: {
+                title: $('title').text().trim(),
+                meta,
+                og,
+                links: (0, extract_1.extractLinks)($, cleanUrl),
+                images: (0, extract_1.extractImages)($, cleanUrl),
+                jsonLd: (0, extract_1.extractJsonLd)($),
+            },
+        };
+    }
+    catch (err) {
+        return {
+            url: cleanUrl,
+            platform,
+            success: false,
+            data: null,
+            error: err.message,
+        };
+    }
 }
 function verify() {
     const fs = require('node:fs');

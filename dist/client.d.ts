@@ -34,5 +34,10 @@ export interface Session {
     rotateProxy(): void;
 }
 export declare function createClient(opts?: ClientOptions): AxiosInstance;
+export declare function resolveUrl(input: string): {
+    url: string;
+    platform?: string;
+};
+export declare function isValidUrl(url: string): boolean;
 export declare function createSession(opts?: ClientOptions): Session;
 //# sourceMappingURL=client.d.ts.map

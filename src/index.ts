@@ -4,7 +4,7 @@ import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 import { fetch, fetchWithRetry, post } from './http';
 import type { FetchOptions, RetryOptions } from './http';
-import { createClient, createSession } from './client';
+import { createClient, createSession, resolveUrl, isValidUrl } from './client';
 import type { ClientOptions, Session } from './client';
 import {
   load, getMeta, getAllMeta, getOG,
@@ -152,6 +152,111 @@ export async function scrapeFacebook(url: string, opts: ClientOptions & { tryGra
   };
 }
 
+export type Platform = 'facebook' | 'youtube' | 'twitter' | 'tiktok' | 'instagram' | 'generic';
+
+const PLATFORM_PATTERNS: Record<Platform, RegExp[]> = {
+  facebook: [
+    /facebook\.com\//,
+    /fb\.com\//,
+    /fb\.watch\//,
+  ],
+  youtube: [
+    /youtube\.com\//,
+    /youtu\.be\//,
+  ],
+  twitter: [
+    /twitter\.com\//,
+    /x\.com\//,
+    /t\.co\//,
+  ],
+  tiktok: [
+    /tiktok\.com\//,
+    /vm\.tiktok\//,
+  ],
+  instagram: [
+    /instagram\.com\//,
+    /instagr\.am\//,
+  ],
+  generic: [],
+};
+
+export function detectPlatform(url: string): Platform {
+  const { url: cleanUrl, platform } = resolveUrl(url);
+  if (platform) return platform as Platform;
+
+  for (const [platformName, patterns] of Object.entries(PLATFORM_PATTERNS)) {
+    if (platformName === 'generic') continue;
+    for (const p of patterns) {
+      if (p.test(cleanUrl)) return platformName as Platform;
+    }
+  }
+
+  return 'generic';
+}
+
+export interface ScrapeResult {
+  url: string;
+  platform: Platform;
+  success: boolean;
+  data: Record<string, unknown> | string | null;
+  error?: string;
+}
+
+export async function scrapeUrl(url: string, opts: ClientOptions & { tryGraphApi?: boolean } = {}): Promise<ScrapeResult> {
+  const { url: cleanUrl, platform: prefixPlatform } = resolveUrl(url);
+  const platform: Platform = prefixPlatform ? (prefixPlatform as Platform) : detectPlatform(cleanUrl);
+
+  try {
+    if (platform === 'facebook') {
+      const fbResult = await scrapeFacebook(cleanUrl, opts);
+      return {
+        url: cleanUrl,
+        platform,
+        success: fbResult.success,
+        data: fbResult.content as Record<string, unknown> | null,
+        error: fbResult.error,
+      };
+    }
+
+    if (platform === 'youtube') {
+      const ytResult = await getVideoInfo(cleanUrl);
+      return {
+        url: cleanUrl,
+        platform,
+        success: true,
+        data: ytResult as unknown as Record<string, unknown>,
+      };
+    }
+
+    const html = await fetch(cleanUrl, { ...opts, cookieJar: false });
+    const $ = load(html);
+    const meta = getAllMeta($);
+    const og = getOG($);
+
+    return {
+      url: cleanUrl,
+      platform,
+      success: true,
+      data: {
+        title: $('title').text().trim(),
+        meta,
+        og,
+        links: extractLinks($, cleanUrl),
+        images: extractImages($, cleanUrl),
+        jsonLd: extractJsonLd($),
+      },
+    };
+  } catch (err) {
+    return {
+      url: cleanUrl,
+      platform,
+      success: false,
+      data: null,
+      error: (err as Error).message,
+    };
+  }
+}
+
 export interface VerifyResult {
   ok: boolean;
   version: string;
@@ -193,6 +298,9 @@ export {
 
   // HTTP
   fetch, fetchWithRetry, post, createClient, createSession,
+
+  // URL helpers
+  resolveUrl, isValidUrl,
 
   // HTML Parser
   load, getMeta, getAllMeta, getOG, getText, getLines,
