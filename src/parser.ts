@@ -1,4 +1,4 @@
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import iconv from 'iconv-lite';
 import chardet from 'chardet';
 
