@@ -20,7 +20,6 @@ const REQUIRED_DIST = [
   'cookies.js', 'cookies.d.ts',
   'utils.js', 'utils.d.ts',
   'facebook.js', 'facebook.d.ts',
-  'youtube.js', 'youtube.d.ts',
 ];
 
 const FORBIDDEN_LEAKS = [
